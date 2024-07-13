@@ -4,11 +4,11 @@ import numpy as np
 from data_loader import load_preprocessed_data, save_preprocessed_data
 from embedding import generate_embeddings, EMBEDDING_METHODS
 from clustering import perform_clustering, CLUSTERING_METHODS
-from visualization import visualize_clusters, plot_silhouette_scores, plot_minimum_spanning_tree
+from visualization import plot_folder_structure, display_folder_contents
 
 def main():
-    st.set_page_config(layout="wide", page_title="Hierarchical Sorting Workbench")
-    st.title("Hierarchical Sorting Workbench")
+    st.set_page_config(layout="wide", page_title="Bookmark Folder Structure Generator")
+    st.title("Bookmark Folder Structure Generator")
 
     # Load data
     bookmarks_df, _ = load_preprocessed_data()
@@ -27,35 +27,33 @@ def main():
         save_preprocessed_data(bookmarks_df, embeddings)
         st.session_state['embeddings'] = embeddings
 
-    # Clustering
-    st.header("2. Clustering")
+    # Clustering and Visualization
     if 'embeddings' in st.session_state:
-        if st.button("Perform All Clustering Methods"):
-            for method_name, method in CLUSTERING_METHODS.items():
-                with st.spinner(f"Performing {method_name} clustering..."):
-                    params = method.get_params()
-                    labels, silhouette_avg, mst = perform_clustering(st.session_state['embeddings'], method_name, **params)
-                st.success(f"{method_name} clustering complete! Silhouette Score: {silhouette_avg:.4f}")
-                st.session_state[f'{method_name}_labels'] = labels
-                st.session_state[f'{method_name}_mst'] = mst
-                st.session_state[f'{method_name}_silhouette'] = silhouette_avg
+        st.header("2. Generate Folder Structure")
+        
+        clustering_method = st.selectbox("Clustering Method", list(CLUSTERING_METHODS.keys()))
+        st.write(CLUSTERING_METHODS[clustering_method].description)
+        
+        params = CLUSTERING_METHODS[clustering_method].get_params()
+
+        if st.button("Generate Folder Structure"):
+            with st.spinner("Generating folder structure..."):
+                hierarchy, n_clusters, silhouette_avg = perform_clustering(st.session_state['embeddings'], clustering_method, **params)
+            st.success(f"Folder structure generated with {n_clusters} top-level folders! Silhouette Score: {silhouette_avg:.4f}")
+            st.session_state['hierarchy'] = hierarchy
+            st.session_state['n_clusters'] = n_clusters
+            st.session_state['silhouette_avg'] = silhouette_avg
+
+        if 'hierarchy' in st.session_state:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("Folder Structure Visualization")
+                plot_folder_structure(st.session_state['hierarchy'], bookmarks_df)
+            with col2:
+                st.subheader("Folder Contents")
+                display_folder_contents(st.session_state['hierarchy'], bookmarks_df)
     else:
         st.warning("Please generate embeddings first.")
-
-    # Visualization
-    st.header("3. Visualization")
-    col1, col2, col3 = st.columns(3)
-
-    for i, method_name in enumerate(CLUSTERING_METHODS.keys()):
-        with [col1, col2, col3][i]:
-            st.subheader(f"{method_name} Visualization")
-            if f'{method_name}_labels' in st.session_state and f'{method_name}_mst' in st.session_state:
-                st.write(f"Silhouette Score: {st.session_state[f'{method_name}_silhouette']:.4f}")
-                visualize_clusters(st.session_state['embeddings'], st.session_state[f'{method_name}_labels'], bookmarks_df)
-                plot_silhouette_scores(st.session_state['embeddings'], st.session_state[f'{method_name}_labels'])
-                plot_minimum_spanning_tree(st.session_state[f'{method_name}_mst'])
-            else:
-                st.info(f"Perform clustering to see {method_name} visualizations.")
 
 if __name__ == "__main__":
     main()
