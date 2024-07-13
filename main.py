@@ -4,7 +4,7 @@ import numpy as np
 from data_loader import load_preprocessed_data, save_preprocessed_data
 from embedding import generate_embeddings, EMBEDDING_METHODS
 from clustering import perform_clustering, CLUSTERING_METHODS
-from visualization import plot_folder_structure, display_folder_contents
+from visualization import plot_folder_structure, display_folder_contents, plot_treemap
 
 def main():
     st.set_page_config(layout="wide", page_title="Bookmark Folder Structure Generator")
@@ -45,11 +45,19 @@ def main():
             st.session_state['silhouette_avg'] = silhouette_avg
 
         if 'hierarchy' in st.session_state:
-            col1, col2 = st.columns(2)
-            with col1:
+            st.header("3. Visualizations")
+            
+            tab1, tab2, tab3 = st.tabs(["Folder Structure", "Treemap", "Folder Contents"])
+            
+            with tab1:
                 st.subheader("Folder Structure Visualization")
                 plot_folder_structure(st.session_state['hierarchy'], bookmarks_df)
-            with col2:
+            
+            with tab2:
+                st.subheader("Folder Treemap")
+                plot_treemap(st.session_state['hierarchy'], bookmarks_df)
+            
+            with tab3:
                 st.subheader("Folder Contents")
                 display_folder_contents(st.session_state['hierarchy'], bookmarks_df)
     else:

@@ -1,6 +1,7 @@
 import streamlit as st
 import plotly.graph_objs as go
 import networkx as nx
+import plotly.express as px
 
 def create_folder_structure(hierarchy, bookmarks_df):
     G = nx.Graph()
@@ -91,3 +92,30 @@ def display_folder_contents(hierarchy, bookmarks_df):
             for idx in indices:
                 bookmark = bookmarks_df.iloc[idx]
                 st.write(f"- [{bookmark['title']}]({bookmark['url']})")
+
+def plot_treemap(hierarchy, bookmarks_df):
+    treemap_data = []
+    for cluster, indices in hierarchy.items():
+        if cluster == -1:
+            folder_name = "Uncategorized"
+        else:
+            folder_name = f"Folder {cluster}"
+        
+        for idx in indices:
+            bookmark = bookmarks_df.iloc[idx]
+            treemap_data.append({
+                "Folder": folder_name,
+                "Bookmark": bookmark['title'],
+                "Size": 1  # Each bookmark has equal size
+            })
+    
+    fig = px.treemap(
+        treemap_data,
+        path=['Folder', 'Bookmark'],
+        values='Size',
+        title='Bookmark Folder Treemap'
+    )
+    fig.update_traces(root_color="lightgrey")
+    fig.update_layout(margin = dict(t=50, l=25, r=25, b=25))
+    
+    st.plotly_chart(fig, use_container_width=True)
