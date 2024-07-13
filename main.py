@@ -16,52 +16,69 @@ def main():
         st.error("Failed to load preprocessed data. Please check the data file.")
         return
 
+    # Display data
+    st.header("Data")
+    st.write(bookmarks_df)
+
     # Embedding
-    st.header("1. Embedding")
-    embedding_method = st.selectbox("Embedding Method", list(EMBEDDING_METHODS.keys()))
-    if st.button("Generate Embeddings"):
-        with st.spinner("Generating embeddings..."):
-            texts = bookmarks_df['title'] + " " + bookmarks_df['url']
-            embeddings = generate_embeddings(texts, method=embedding_method)
-        st.success("Embeddings generated successfully!")
-        save_preprocessed_data(bookmarks_df, embeddings)
-        st.session_state['embeddings'] = embeddings
+    st.header("Embedding")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("Method 1")
+        embedding_method1 = st.selectbox("Embedding Method", list(EMBEDDING_METHODS.keys()), key='embedding_method1')
+        if st.button("Generate Embeddings", key='generate_embeddings1'):
+            with st.spinner("Generating embeddings..."):
+                texts = (bookmarks_df['title'] + " " + bookmarks_df['url'] + " " + bookmarks_df['tags']).tolist()
+                embeddings1 = generate_embeddings(texts, method=embedding_method1)
+            st.success("Embeddings generated successfully!")
+            save_preprocessed_data(bookmarks_df, embeddings1)
+            st.session_state['embeddings1'] = embeddings1
+
+    with col2:
+        st.subheader("Method 2")
+        embedding_method2 = st.selectbox("Embedding Method", list(EMBEDDING_METHODS.keys()), key='embedding_method2')
+        if st.button("Generate Embeddings", key='generate_embeddings2'):
+            with st.spinner("Generating embeddings..."):
+                texts = (bookmarks_df['title'] + " " + bookmarks_df['url'] + " " + bookmarks_df['tags']).tolist()
+                embeddings2 = generate_embeddings(texts, method=embedding_method2)
+            st.success("Embeddings generated successfully!")
+            save_preprocessed_data(bookmarks_df, embeddings2)
+            st.session_state['embeddings2'] = embeddings2
 
     # Clustering and Visualization
-    if 'embeddings' in st.session_state:
-        st.header("2. Generate Folder Structure")
+    if 'embeddings1' in st.session_state and 'embeddings2' in st.session_state:
+        st.header("Clustering and Visualization")
         
-        clustering_method = st.selectbox("Clustering Method", list(CLUSTERING_METHODS.keys()))
-        st.write(CLUSTERING_METHODS[clustering_method].description)
+        col1, col2 = st.columns(2)
         
-        params = CLUSTERING_METHODS[clustering_method].get_params()
-
-        if st.button("Generate Folder Structure"):
-            with st.spinner("Generating folder structure..."):
-                hierarchy, n_clusters, silhouette_avg = perform_clustering(st.session_state['embeddings'], clustering_method, **params)
-            st.success(f"Folder structure generated with {n_clusters} top-level folders! Silhouette Score: {silhouette_avg:.4f}")
-            st.session_state['hierarchy'] = hierarchy
-            st.session_state['n_clusters'] = n_clusters
-            st.session_state['silhouette_avg'] = silhouette_avg
-
-        if 'hierarchy' in st.session_state:
-            st.header("3. Visualizations")
-            
-            tab1, tab2, tab3 = st.tabs(["Folder Structure", "Treemap", "Folder Contents"])
-            
-            with tab1:
-                st.subheader("Folder Structure Visualization")
-                plot_folder_structure(st.session_state['hierarchy'], bookmarks_df)
-            
-            with tab2:
-                st.subheader("Folder Treemap")
-                plot_treemap(st.session_state['hierarchy'], bookmarks_df)
-            
-            with tab3:
-                st.subheader("Folder Contents")
-                display_folder_contents(st.session_state['hierarchy'], bookmarks_df)
-    else:
-        st.warning("Please generate embeddings first.")
+        with col1:
+            st.subheader("Method 1")
+            clustering_method1 = st.selectbox("Clustering Method", list(CLUSTERING_METHODS.keys()), key='clustering_method1')
+            params1 = CLUSTERING_METHODS[clustering_method1].get_params(key='params1')
+            if st.button("Generate Folder Structure", key='generate_structure1'):
+                with st.spinner("Generating folder structure..."):
+                    hierarchy1, n_clusters1, silhouette_avg1 = perform_clustering(st.session_state['embeddings1'], clustering_method1, **params1)
+                st.success(f"Folder structure generated with {n_clusters1} top-level folders! Silhouette Score: {silhouette_avg1:.4f}")
+                st.session_state['hierarchy1'] = hierarchy1
+            if 'hierarchy1' in st.session_state:
+                plot_folder_structure(st.session_state['hierarchy1'], bookmarks_df)
+                plot_treemap(st.session_state['hierarchy1'], bookmarks_df)
+                display_folder_contents(st.session_state['hierarchy1'], bookmarks_df)
+        
+        with col2:
+            st.subheader("Method 2")
+            clustering_method2 = st.selectbox("Clustering Method", list(CLUSTERING_METHODS.keys()), key='clustering_method2')
+            params2 = CLUSTERING_METHODS[clustering_method2].get_params(key='params2')
+            if st.button("Generate Folder Structure", key='generate_structure2'):
+                with st.spinner("Generating folder structure..."):
+                    hierarchy2, n_clusters2, silhouette_avg2 = perform_clustering(st.session_state['embeddings2'], clustering_method2, **params2)
+                st.success(f"Folder structure generated with {n_clusters2} top-level folders! Silhouette Score: {silhouette_avg2:.4f}")
+                st.session_state['hierarchy2'] = hierarchy2
+            if 'hierarchy2' in st.session_state:
+                plot_folder_structure(st.session_state['hierarchy2'], bookmarks_df)
+                plot_treemap(st.session_state['hierarchy2'], bookmarks_df)
+                display_folder_contents(st.session_state['hierarchy2'], bookmarks_df)
 
 if __name__ == "__main__":
     main()

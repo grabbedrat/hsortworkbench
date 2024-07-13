@@ -1,17 +1,18 @@
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sentence_transformers import SentenceTransformer
 
 def tfidf_embedding(texts):
     vectorizer = TfidfVectorizer()
     return vectorizer.fit_transform(texts).toarray()
 
-def dummy_embedding(texts):
-    # This is a placeholder for future embedding methods
-    return np.random.rand(len(texts), 100)
+def transformer_embedding(texts):
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    return model.encode(texts)
 
 EMBEDDING_METHODS = {
     'TF-IDF': tfidf_embedding,
-    'Dummy': dummy_embedding,
+    'Transformer': transformer_embedding
 }
 
 def generate_embeddings(texts, method='TF-IDF'):
