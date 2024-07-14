@@ -4,13 +4,17 @@ import networkx as nx
 import plotly.express as px
 from collections import Counter
 
-
 def create_folder_structure(hierarchy, bookmarks_df, depth_limit=None):
     G = nx.Graph()
     G.add_node("Root")
     
     def add_nodes(node, parent="Root", current_depth=0):
         if depth_limit is not None and current_depth > depth_limit:
+            # Add leaf node even if depth limit is reached
+            if 'children' not in node:
+                bookmark = bookmarks_df.iloc[node['node_id']]
+                G.add_node(node['node_id'], title=bookmark['title'], type='bookmark')
+                G.add_edge(parent, node['node_id'])
             return
         
         if 'children' not in node:
@@ -104,9 +108,9 @@ def plot_folder_structure(hierarchy, bookmarks_df, depth_limit=None):
             node_size.append(20)
             node_color.append('#FF9900')
         else:  # Bookmark
-            node_text.append('')  # Empty text for bookmarks
+            node_text.append(G.nodes[node]['title'][:10] + '...')  # Show truncated title
             node_hovertext.append(G.nodes[node]['title'])
-            node_size.append(10)
+            node_size.append(15)  # Increased size for better visibility
             node_color.append('#2CA02C')
     
     node_trace = go.Scatter(

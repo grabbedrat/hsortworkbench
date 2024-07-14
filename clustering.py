@@ -42,8 +42,6 @@ CLUSTERING_METHODS = {
         "Density-based clustering that can find clusters of varying densities and shapes. Can identify 'noise' points."
     )
 }
-
-
 def perform_clustering(embeddings, method, **params):
     if method not in CLUSTERING_METHODS:
         raise ValueError(f"Unknown clustering method: {method}")
@@ -87,6 +85,8 @@ def create_agglomerative_hierarchy(clusterer, embeddings):
             'distance': distances[i]
         }
     
+    print(f"Agglomerative hierarchy created with {len(hierarchy)} nodes")
+    print(f"Root node has {len(hierarchy[-1]['children'])} children")
     return hierarchy[-1]  # Return the root of the hierarchy
 
 def create_hdbscan_hierarchy(clusterer, embeddings):

@@ -67,7 +67,7 @@ def clustering_and_visualization(bookmarks_df):
     clustering_method = st.selectbox("Clustering Method", list(CLUSTERING_METHODS.keys()), key='clustering_method')
     params = CLUSTERING_METHODS[clustering_method].get_params(key_prefix='clustering')
     
-    depth_limit = st.slider("Depth Limit", 1, 10, 3, key='depth_limit')
+    depth_limit = st.slider("Depth Limit", 1, 10, 5, key='depth_limit')  # Increased default to 5
     
     if st.button("Generate Folder Structure", key='generate_structure'):
         with st.spinner("Generating folder structure..."):
@@ -87,6 +87,7 @@ def clustering_and_visualization(bookmarks_df):
     
     if 'hierarchy' in st.session_state:
         st.subheader("Folder Structure Visualization")
+        st.write(f"Hierarchy contains {count_nodes(st.session_state['hierarchy'])} nodes")
         plot_folder_structure(st.session_state['hierarchy'], bookmarks_df, depth_limit)
         
         st.subheader("Treemap Visualization")
@@ -111,6 +112,11 @@ def create_folder_structure_dict(hierarchy, bookmarks_df):
             }
     
     return build_structure(hierarchy)
+
+def count_nodes(node):
+    if 'children' not in node:
+        return 1
+    return 1 + sum(count_nodes(child) for child in node['children'])
 
 if __name__ == "__main__":
     main()
