@@ -43,6 +43,7 @@ CLUSTERING_METHODS = {
     )
 }
 
+
 def perform_clustering(embeddings, method, **params):
     if method not in CLUSTERING_METHODS:
         raise ValueError(f"Unknown clustering method: {method}")
@@ -59,7 +60,12 @@ def perform_clustering(embeddings, method, **params):
     flat_labels = get_flat_labels(hierarchy)
     n_clusters = len(set(flat_labels)) - (1 if -1 in flat_labels else 0)
     
-    silhouette_avg = silhouette_score(embeddings, flat_labels) if n_clusters > 1 else 0
+    # Check if silhouette score can be calculated
+    if n_clusters <= 1 or n_clusters >= len(embeddings):
+        silhouette_avg = 0
+        st.warning(f"Silhouette score cannot be calculated. Number of clusters: {n_clusters}, Number of samples: {len(embeddings)}")
+    else:
+        silhouette_avg = silhouette_score(embeddings, flat_labels)
     
     return hierarchy, n_clusters, silhouette_avg
 

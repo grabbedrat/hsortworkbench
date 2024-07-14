@@ -4,6 +4,7 @@ import networkx as nx
 import plotly.express as px
 from collections import Counter
 
+
 def create_folder_structure(hierarchy, bookmarks_df, depth_limit=None):
     G = nx.Graph()
     G.add_node("Root")
@@ -53,9 +54,16 @@ def get_folder_name(node, bookmarks_df):
         return " ".join(common_words)
     else:
         return f"Folder {node['node_id']}"
-
+    
 def plot_folder_structure(hierarchy, bookmarks_df, depth_limit=None):
     G = create_folder_structure(hierarchy, bookmarks_df, depth_limit)
+    
+    # Debug information
+    st.write(f"Number of nodes in the graph: {G.number_of_nodes()}")
+    st.write(f"Number of edges in the graph: {G.number_of_edges()}")
+    st.write("Node types:")
+    for node, data in G.nodes(data=True):
+        st.write(f"  {node}: {data.get('type', 'unknown')}")
     
     pos = nx.spring_layout(G, k=0.5, iterations=50)
     
