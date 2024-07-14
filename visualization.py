@@ -65,9 +65,9 @@ def plot_folder_structure(hierarchy, bookmarks_df, depth_limit=None):
     # Debug information
     st.write(f"Number of nodes in the graph: {G.number_of_nodes()}")
     st.write(f"Number of edges in the graph: {G.number_of_edges()}")
-    st.write("Node types:")
-    for node, data in G.nodes(data=True):
-        st.write(f"  {node}: {data.get('type', 'unknown')}")
+    #st.write("Node types:")
+    #for node, data in G.nodes(data=True):
+    #    st.write(f"  {node}: {data.get('type', 'unknown')}")
     
     pos = nx.spring_layout(G, k=0.5, iterations=50)
     
