@@ -15,12 +15,12 @@ def create_folder_structure(hierarchy, bookmarks_df, depth_limit=None):
         if 'children' not in node:
             # This is a leaf node (bookmark)
             bookmark = bookmarks_df.iloc[node['node_id']]
-            G.add_node(bookmark['title'])
-            G.add_edge(parent, bookmark['title'])
+            G.add_node(node['node_id'], title=bookmark['title'], type='bookmark')
+            G.add_edge(parent, node['node_id'])
         else:
             # This is an internal node (folder)
             folder_name = get_folder_name(node, bookmarks_df)
-            G.add_node(folder_name)
+            G.add_node(folder_name, type='folder')
             G.add_edge(parent, folder_name)
             for child in node['children']:
                 add_nodes(child, folder_name, current_depth + 1)
@@ -76,20 +76,28 @@ def plot_folder_structure(hierarchy, bookmarks_df, depth_limit=None):
     node_x = []
     node_y = []
     node_text = []
+    node_hovertext = []
     node_size = []
     node_color = []
     for node in G.nodes():
         x, y = pos[node]
         node_x.append(x)
         node_y.append(y)
-        node_text.append(node)
+        
+        node_type = G.nodes[node].get('type', '')
         if node == "Root":
+            node_text.append("Root")
+            node_hovertext.append("Root")
             node_size.append(30)
             node_color.append('#1F77B4')
-        elif G.degree[node] > 1:  # Folder
+        elif node_type == 'folder':
+            node_text.append(node)
+            node_hovertext.append(node)
             node_size.append(20)
             node_color.append('#FF9900')
         else:  # Bookmark
+            node_text.append('')  # Empty text for bookmarks
+            node_hovertext.append(G.nodes[node]['title'])
             node_size.append(10)
             node_color.append('#2CA02C')
     
@@ -98,6 +106,7 @@ def plot_folder_structure(hierarchy, bookmarks_df, depth_limit=None):
         mode='markers+text',
         hoverinfo='text',
         text=node_text,
+        hovertext=node_hovertext,
         textposition="top center",
         marker=dict(
             showscale=False,
