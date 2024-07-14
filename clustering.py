@@ -11,20 +11,20 @@ class ClusteringMethod:
         self.param_func = param_func
         self.description = description
 
-    def get_params(self):
-        return self.param_func()
+    def get_params(self, key_prefix=''):
+        return self.param_func(key_prefix)
 
-def get_agglomerative_params():
+def get_agglomerative_params(key_prefix=''):
     return {
-        'n_clusters': st.slider("Number of clusters", 2, 20, 5),
-        'linkage': st.selectbox("Linkage", ['ward', 'complete', 'average', 'single'])
+        'n_clusters': st.slider("Number of clusters", 2, 20, 5, key=f"{key_prefix}_n_clusters"),
+        'linkage': st.selectbox("Linkage", ['ward', 'complete', 'average', 'single'], key=f"{key_prefix}_linkage")
     }
 
-def get_hdbscan_params():
+def get_hdbscan_params(key_prefix=''):
     return {
-        'min_cluster_size': st.slider("Minimum cluster size", 2, 20, 5),
-        'min_samples': st.slider("Minimum samples", 1, 10, 1),
-        'cluster_selection_epsilon': st.slider("Cluster selection epsilon", 0.0, 1.0, 0.0, 0.1)
+        'min_cluster_size': st.slider("Minimum cluster size", 2, 20, 5, key=f"{key_prefix}_min_cluster_size"),
+        'min_samples': st.slider("Minimum samples", 1, 10, 1, key=f"{key_prefix}_min_samples"),
+        'cluster_selection_epsilon': st.slider("Cluster selection epsilon", 0.0, 1.0, 0.0, 0.1, key=f"{key_prefix}_cluster_selection_epsilon")
     }
 
 CLUSTERING_METHODS = {
