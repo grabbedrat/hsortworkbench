@@ -3,6 +3,16 @@ from sklearn.cluster import AgglomerativeClustering
 from hdbscan import HDBSCAN
 from sklearn.metrics import silhouette_score
 import streamlit as st
+from gensim import corpora
+from gensim.models import LdaModel
+from gensim.parsing.preprocessing import STOPWORDS
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+import nltk
+
+# Download necessary NLTK data
+nltk.download('punkt', quiet=True)
+nltk.download('wordnet', quiet=True)
 
 class ClusteringMethod:
     def __init__(self, name, algorithm, param_func, description):
@@ -28,6 +38,15 @@ def get_hdbscan_params(key_prefix=''):
         'cluster_selection_epsilon': st.slider("Cluster selection epsilon", 0.0, 1.0, 0.0, 0.1, key=f"{key_prefix}_cluster_selection_epsilon")
     }
 
+def get_lda_params(key_prefix=''):
+    return {
+        'num_topics': st.slider("Number of topics", 2, 50, 10, key=f"{key_prefix}_num_topics"),
+        'passes': st.slider("Number of passes", 1, 20, 5, key=f"{key_prefix}_passes"),
+        'chunksize': st.slider("Chunk size", 100, 5000, 2000, 100, key=f"{key_prefix}_chunksize"),
+        'alpha': st.select_slider("Alpha", options=['symmetric', 'asymmetric', 'auto'], value='symmetric', key=f"{key_prefix}_alpha"),
+        'eta': st.number_input("Eta", 0.001, 1.0, 0.1, 0.001, key=f"{key_prefix}_eta")
+    }
+
 CLUSTERING_METHODS = {
     'Agglomerative': ClusteringMethod(
         'Agglomerative', 
@@ -40,32 +59,108 @@ CLUSTERING_METHODS = {
         HDBSCAN, 
         get_hdbscan_params,
         "Density-based clustering that can find clusters of varying densities and shapes. Can identify 'noise' points."
+    ),
+    'LDA': ClusteringMethod(
+        'LDA',
+        LdaModel,
+        get_lda_params,
+        "Latent Dirichlet Allocation for topic modeling. Discovers abstract topics in a collection of documents."
     )
 }
-def perform_clustering(embeddings, method, **params):
+
+def preprocess_text(text):
+    lemmatizer = WordNetLemmatizer()
+    tokens = word_tokenize(text.lower())
+    return [lemmatizer.lemmatize(token) for token in tokens if token not in STOPWORDS and token.isalnum()]
+
+def perform_clustering(bookmarks_df, method, **params):
     if method not in CLUSTERING_METHODS:
         raise ValueError(f"Unknown clustering method: {method}")
     
-    clusterer = CLUSTERING_METHODS[method].algorithm(**params)
-    
-    if method == 'Agglomerative':
-        clusterer.fit(embeddings)
-        hierarchy = create_agglomerative_hierarchy(clusterer, embeddings)
-    else:  # HDBSCAN
-        clusterer.fit(embeddings)
-        hierarchy = create_hdbscan_hierarchy(clusterer, embeddings)
-    
-    flat_labels = get_flat_labels(hierarchy)
-    n_clusters = len(set(flat_labels)) - (1 if -1 in flat_labels else 0)
-    
-    # Check if silhouette score can be calculated
-    if n_clusters <= 1 or n_clusters >= len(embeddings):
-        silhouette_avg = 0
-        st.warning(f"Silhouette score cannot be calculated. Number of clusters: {n_clusters}, Number of samples: {len(embeddings)}")
+    if method == 'LDA':
+        return perform_lda_clustering(bookmarks_df, **params)
     else:
-        silhouette_avg = silhouette_score(embeddings, flat_labels)
+        embeddings = st.session_state['active_embeddings']
+        clusterer = CLUSTERING_METHODS[method].algorithm(**params)
+        
+        if method == 'Agglomerative':
+            clusterer.fit(embeddings)
+            hierarchy = create_agglomerative_hierarchy(clusterer, embeddings)
+        else:  # HDBSCAN
+            clusterer.fit(embeddings)
+            hierarchy = create_hdbscan_hierarchy(clusterer, embeddings)
+        
+        flat_labels = get_flat_labels(hierarchy)
+        n_clusters = len(set(flat_labels)) - (1 if -1 in flat_labels else 0)
+        
+        if n_clusters <= 1 or n_clusters >= len(embeddings):
+            silhouette_avg = 0
+            st.warning(f"Silhouette score cannot be calculated. Number of clusters: {n_clusters}, Number of samples: {len(embeddings)}")
+        else:
+            silhouette_avg = silhouette_score(embeddings, flat_labels)
+        
+        return hierarchy, n_clusters, silhouette_avg
+
+def perform_lda_clustering(bookmarks_df, num_topics, passes, chunksize, alpha, eta):
+    # Combine title, URL, and tags for each bookmark
+    texts = (bookmarks_df['title'] + " " + bookmarks_df['url'] + " " + bookmarks_df['tags']).tolist()
+    
+    # Preprocess the texts
+    processed_texts = [preprocess_text(text) for text in texts]
+    
+    # Create a dictionary and corpus
+    dictionary = corpora.Dictionary(processed_texts)
+    corpus = [dictionary.doc2bow(text) for text in processed_texts]
+    
+    # Train the LDA model
+    lda_model = LdaModel(
+        corpus=corpus,
+        id2word=dictionary,
+        num_topics=num_topics,
+        passes=passes,
+        chunksize=chunksize,
+        alpha=alpha,
+        eta=eta
+    )
+    
+    # Create hierarchy based on LDA results
+    hierarchy = create_lda_hierarchy(lda_model, corpus, bookmarks_df)
+    
+    n_clusters = num_topics
+    silhouette_avg = 0  # LDA doesn't have a straightforward silhouette score
     
     return hierarchy, n_clusters, silhouette_avg
+
+def create_lda_hierarchy(lda_model, corpus, bookmarks_df):
+    # Create root node
+    hierarchy = {
+        'node_id': 'root',
+        'size': len(bookmarks_df),
+        'children': []
+    }
+    
+    # Create a topic for each LDA topic
+    for topic_id in range(lda_model.num_topics):
+        topic_node = {
+            'node_id': f'topic_{topic_id}',
+            'size': 0,
+            'children': []
+        }
+        hierarchy['children'].append(topic_node)
+    
+    # Assign documents to topics
+    for doc_id, doc_topics in enumerate(lda_model[corpus]):
+        best_topic = max(doc_topics, key=lambda x: x[1])
+        topic_id, _ = best_topic
+        
+        bookmark_node = {
+            'node_id': doc_id,
+            'size': 1
+        }
+        hierarchy['children'][topic_id]['children'].append(bookmark_node)
+        hierarchy['children'][topic_id]['size'] += 1
+    
+    return hierarchy
 
 def create_agglomerative_hierarchy(clusterer, embeddings):
     n_samples = len(embeddings)

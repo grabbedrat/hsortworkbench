@@ -71,7 +71,10 @@ def clustering_and_visualization(bookmarks_df):
     
     if st.button("Generate Folder Structure", key='generate_structure'):
         with st.spinner("Generating folder structure..."):
-            hierarchy, n_clusters, silhouette_avg = perform_clustering(st.session_state['active_embeddings'], clustering_method, **params)
+            if clustering_method == 'LDA':
+                hierarchy, n_clusters, silhouette_avg = perform_clustering(bookmarks_df, clustering_method, **params)
+            else:
+                hierarchy, n_clusters, silhouette_avg = perform_clustering(st.session_state['active_embeddings'], clustering_method, **params)
         st.success(f"Folder structure generated with {n_clusters} top-level folders! Silhouette Score: {silhouette_avg:.4f}")
         st.session_state['hierarchy'] = hierarchy
         
