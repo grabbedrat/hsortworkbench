@@ -3,17 +3,16 @@ import pandas as pd
 import numpy as np
 import json
 from data_loader import load_preprocessed_data, save_preprocessed_data
-from embedding import generate_embeddings, EMBEDDING_METHODS
+from sentence_transformers import SentenceTransformer
 from clustering import perform_clustering, CLUSTERING_METHODS
 from visualization import plot_folder_structure, display_folder_contents, plot_treemap
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 def main():
     st.set_page_config(layout="wide", page_title="Bookmark Folder Structure Generator")
     st.title("Bookmark Folder Structure Generator")
 
     # Load data
-    bookmarks_df, _ = load_preprocessed_data()
+    bookmarks_df, embeddings = load_preprocessed_data()
     if bookmarks_df is None:
         st.error("Failed to load preprocessed data. Please check the data file.")
         return
@@ -25,45 +24,41 @@ def main():
     # Embedding
     st.header("Embedding and Clustering")
     
-    # Create tabs for different embedding methods
-    tab1, tab2 = st.tabs(["TF-IDF", "Transformer"])
+    generate_embeddings(bookmarks_df, embeddings)
     
-    with tab1:
-        generate_embeddings_tab("TF-IDF", bookmarks_df)
-    
-    with tab2:
-        generate_embeddings_tab("Transformer", bookmarks_df)
-    
-    # Clustering and Visualization (outside of tabs, will use the active embeddings)
+    # Clustering and Visualization
     if 'active_embeddings' in st.session_state:
         clustering_and_visualization(bookmarks_df)
 
-def generate_embeddings_tab(method, bookmarks_df):
-    st.subheader(f"{method} Embedding")
-    if st.button(f"Generate {method} Embeddings", key=f'generate_embeddings_{method}'):
+def generate_embeddings(bookmarks_df, existing_embeddings):
+    st.subheader("BERT Embedding")
+    if existing_embeddings is not None:
+        st.info("Embeddings already exist. You can regenerate them if needed.")
+    
+    if st.button("Generate BERT Embeddings"):
         texts = (bookmarks_df['title'] + " " + bookmarks_df['url'] + " " + bookmarks_df['tags']).tolist()
         
         # Create a progress bar
         progress_bar = st.progress(0)
         
+        # Load BERT model
+        model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+        
         # Generate embeddings with progress updates
-        if method == "TF-IDF":
-            vectorizer = TfidfVectorizer()
-            embeddings = vectorizer.fit_transform(texts)
-            embeddings = embeddings.toarray()  # Convert sparse matrix to dense array
-        else:  # Transformer
-            embeddings = []
-            for i, text in enumerate(texts):
-                embedding = generate_embeddings([text], method=method)[0]
-                embeddings.append(embedding)
-                progress_bar.progress((i + 1) / len(texts))
-            embeddings = np.array(embeddings)
+        embeddings = []
+        for i, text in enumerate(texts):
+            embedding = model.encode(text)
+            embeddings.append(embedding)
+            progress_bar.progress((i + 1) / len(texts))
+        
+        embeddings = np.array(embeddings)
         
         st.success("Embeddings generated successfully!")
         save_preprocessed_data(bookmarks_df, embeddings)
         st.session_state['active_embeddings'] = embeddings
-        st.session_state['active_method'] = method
         st.experimental_rerun()  # Rerun to update the clustering section
+    elif existing_embeddings is not None:
+        st.session_state['active_embeddings'] = existing_embeddings
 
 def clustering_and_visualization(bookmarks_df):
     st.header("Clustering and Visualization")
