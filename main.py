@@ -5,7 +5,8 @@ import json
 from data_loader import load_preprocessed_data, save_preprocessed_data
 from sentence_transformers import SentenceTransformer
 from clustering import perform_clustering, CLUSTERING_METHODS
-from visualization import plot_folder_structure, display_folder_contents, plot_treemap
+from visualization import plot_folder_structure, display_folder_contents, plot_treemap, get_folder_name
+
 
 def main():
     st.set_page_config(layout="wide", page_title="Bookmark Folder Structure Generator")
@@ -61,10 +62,12 @@ def generate_embeddings(bookmarks_df, existing_embeddings):
         st.session_state['active_embeddings'] = existing_embeddings
 
 def clustering_and_visualization(bookmarks_df):
-    st.header("Clustering and Visualization")
+    st.subheader("Clustering and Visualization")
     
     clustering_method = st.selectbox("Clustering Method", list(CLUSTERING_METHODS.keys()), key='clustering_method')
     params = CLUSTERING_METHODS[clustering_method].get_params(key_prefix='clustering')
+    
+    depth_limit = st.slider("Depth Limit", 1, 10, 5, key='depth_limit')  # Increased default to 5
     
     if st.button("Generate Folder Structure", key='generate_structure'):
         with st.spinner("Generating folder structure..."):
@@ -84,7 +87,8 @@ def clustering_and_visualization(bookmarks_df):
     
     if 'hierarchy' in st.session_state:
         st.subheader("Folder Structure Visualization")
-        plot_folder_structure(st.session_state['hierarchy'], bookmarks_df)
+        st.write(f"Hierarchy contains {count_nodes(st.session_state['hierarchy'])} nodes")
+        plot_folder_structure(st.session_state['hierarchy'], bookmarks_df, depth_limit)
         
         st.subheader("Treemap Visualization")
         plot_treemap(st.session_state['hierarchy'], bookmarks_df)
@@ -93,22 +97,26 @@ def clustering_and_visualization(bookmarks_df):
         display_folder_contents(st.session_state['hierarchy'], bookmarks_df)
 
 def create_folder_structure_dict(hierarchy, bookmarks_df):
-    folder_structure = {}
-    for cluster, indices in hierarchy.items():
-        if cluster == -1:
-            folder_name = "Uncategorized"
-        else:
-            folder_name = f"Folder {cluster}"
-        
-        folder_structure[folder_name] = [
-            {
-                "title": bookmarks_df.iloc[idx]['title'],
-                "url": bookmarks_df.iloc[idx]['url'],
-                "tags": bookmarks_df.iloc[idx]['tags']
+    def build_structure(node):
+        if 'children' not in node:
+            bookmark = bookmarks_df.iloc[node['node_id']]
+            return {
+                "title": bookmark['title'],
+                "url": bookmark['url'],
+                "tags": bookmark['tags']
             }
-            for idx in indices
-        ]
-    return folder_structure
+        else:
+            folder_name = get_folder_name(node, bookmarks_df)
+            return {
+                folder_name: [build_structure(child) for child in node['children']]
+            }
+    
+    return build_structure(hierarchy)
+
+def count_nodes(node):
+    if 'children' not in node:
+        return 1
+    return 1 + sum(count_nodes(child) for child in node['children'])
 
 if __name__ == "__main__":
     main()
