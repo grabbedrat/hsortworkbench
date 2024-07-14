@@ -114,6 +114,8 @@ def create_hdbscan_hierarchy(clusterer, embeddings):
 def get_flat_labels(hierarchy):
     if 'label' in hierarchy:
         return [hierarchy['label']]
+    if 'children' not in hierarchy:
+        return [hierarchy.get('node_id', -1)]  # Return node_id or -1 if not found
     labels = []
     for child in hierarchy['children']:
         labels.extend(get_flat_labels(child))
