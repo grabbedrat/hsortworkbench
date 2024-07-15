@@ -62,13 +62,6 @@ def get_folder_name(node, bookmarks_df):
 def plot_folder_structure(hierarchy, bookmarks_df, depth_limit=None):
     G = create_folder_structure(hierarchy, bookmarks_df, depth_limit)
     
-    # Debug information
-    st.write(f"Number of nodes in the graph: {G.number_of_nodes()}")
-    st.write(f"Number of edges in the graph: {G.number_of_edges()}")
-    #st.write("Node types:")
-    #for node, data in G.nodes(data=True):
-    #    st.write(f"  {node}: {data.get('type', 'unknown')}")
-    
     pos = nx.spring_layout(G, k=0.5, iterations=50)
     
     edge_x = []
@@ -108,9 +101,9 @@ def plot_folder_structure(hierarchy, bookmarks_df, depth_limit=None):
             node_size.append(20)
             node_color.append('#FF9900')
         else:  # Bookmark
-            node_text.append(G.nodes[node]['title'][:10] + '...')  # Show truncated title
-            node_hovertext.append(G.nodes[node]['title'])
-            node_size.append(15)  # Increased size for better visibility
+            node_text.append('')  # Empty text for bookmarks
+            node_hovertext.append(G.nodes[node]['title'])  # Full title on hover
+            node_size.append(15)
             node_color.append('#2CA02C')
     
     node_trace = go.Scatter(
